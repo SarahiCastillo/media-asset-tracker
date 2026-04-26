@@ -15,7 +15,7 @@ VALID_STATUSES = [
     "qc_failed",
     "encoding",
     "delivered",
-    "failed"
+    "failed",
 ]
 
 REQUIRED_FIELDS = [
@@ -25,16 +25,18 @@ REQUIRED_FIELDS = [
     "resolution",
     "file_size_gb",
     "territory",
-    "language"
+    "language",
 ]
 
 id_lock = Lock()
+
 
 def current_date():
     """
     Returns current UTC time as ISO string.
     """
     return datetime.now(timezone.utc).isoformat()
+
 
 def generate_id():
     """
@@ -43,35 +45,36 @@ def generate_id():
     with id_lock:
         if not SEED_DATA:
             return "ASSET-001"
-        
+
         valid_ids = []
-        
+
         for asset in SEED_DATA:
             asset_id = asset.get("id")
-            
+
             if asset_id and "-" in asset_id:
                 prefix, number = asset_id.split("-")
-                
+
                 if number.isdigit():
                     valid_ids.append((prefix, int(number)))
-            
+
         if not valid_ids:
             return "ASSET-001"
-        
-        valid_ids.sort(key=lambda x:x[1])
+
+        valid_ids.sort(key=lambda x: x[1])
         prefrix, last_id = valid_ids[-1]
-        
+
         id_len = max(3, len(str(last_id)))
         next_id = str(int(last_id) + 1).zfill(id_len)
-        
+
         return f"{prefix}-{next_id}"
+
 
 def find_asset(asset_id):
     """
     Returns the asset dict or None.
     """
     return next((asset for asset in SEED_DATA if asset["id"] == asset_id), None)
-  
+
 
 @app.route("/v1/api/assets", methods=["GET"])
 def get_assets():
@@ -83,17 +86,18 @@ def get_assets():
     """
     status_filter = request.args.get("status", "").strip().lower()
     search_filter = request.args.get("search", "").strip().lower()
-    
+
     results = SEED_DATA
-    
+
     if status_filter:
         results = [asset for asset in results if asset["status"] == status_filter]
-        
+
     if search_filter:
-        results = [asset for asset in results if search_filter in asset["title"].lower()]
-        
-    
-    return jsonify({ "assets": results, "total": len(results)}), 200
+        results = [
+            asset for asset in results if search_filter in asset["title"].lower()
+        ]
+
+    return jsonify({"assets": results, "total": len(results)}), 200
 
 
 @app.route("/v1/api/assets/<string:asset_id>", methods=["GET"])
@@ -103,11 +107,12 @@ def get_asset(asset_id):
     Returns a single asset or 404.
     """
     asset = find_asset(asset_id)
-    
+
     if not asset:
         return jsonify({"error": "Asset not found"}), 404
-    
+
     return jsonify(asset), 200
+
 
 @app.route("/v1/api/assets", methods=["POST"])
 def ingest_asset():
@@ -116,15 +121,19 @@ def ingest_asset():
     Registers a new asset. Auto-assigns id, status=ingested, timestamps.
     """
     body = request.get_json(silent=True) or {}
-    
+
     missing = [field for field in REQUIRED_FIELDS if not body.get(field)]
 
-    if missing: 
-        return jsonify({
-            "error": "Missing required fields",
-            "missing_fields": missing,
-        }), 400
-        
+    if missing:
+        return (
+            jsonify(
+                {
+                    "error": "Missing required fields",
+                    "missing_fields": missing,
+                }
+            ),
+            400,
+        )
 
     new_asset = {
         "id": generate_id(),
@@ -143,27 +152,51 @@ def ingest_asset():
     SEED_DATA.append(new_asset)
     return jsonify(new_asset), 201
 
+
 @app.route("/v1/api/assets/<string:asset_id>/status", methods=["PUT"])
 def update_status(asset_id):
     """
     PUT /api/assets/<id>/status
     Body: { "status": "qc_passed" }
     """
+    if not asset_id:
+        return jsonify({"error": f"Missing asset ID. Please provide a valid ID."}), 400
+
     asset = find_asset(asset_id)
-    
+
     if not asset:
         return jsonify({"error": "Asset not found"}), 404
-    
+
     body = request.get_json(silent=True) or {}
+    print("BODY - ", body)
     new_status = body.get("status", "")
-    
+
+    if not new_status:
+        return (
+            jsonify(
+                {
+                    "error": f"Missing new status. Must be one of: {', '.join(VALID_STATUSES)}"
+                }
+            ),
+            400,
+        )
+
+    print("Status received ---- ", new_status)
     if new_status not in VALID_STATUSES:
-        return jsonify({"error": f"Invalid status. Must be one of: {', '.join(VALID_STATUSES)}"}), 400
-    
+        return (
+            jsonify(
+                {
+                    "error": f"Invalid status. Must be one of: {', '.join(VALID_STATUSES)}"
+                }
+            ),
+            400,
+        )
+
     asset["status"] = new_status
     asset["updated_at"] = current_date()
-    
+
     return jsonify(asset), 200
+
 
 @app.route("/v1/api/stats", methods=["GET"])
 def get_status():
@@ -172,20 +205,15 @@ def get_status():
     Returns total count and breakdown by status.
     """
     by_status = {status: 0 for status in VALID_STATUSES}
-    
+
     for asset in SEED_DATA:
         asset_status = asset.get("status")
-        
+
         if asset_status in by_status:
             by_status[asset_status] += 1
-            
-    return jsonify({
-        "total": len(SEED_DATA),
-        "number_assets_by_status": by_status
-    }), 200
+
+    return jsonify({"total": len(SEED_DATA), "assets_by_status": by_status}), 200
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=8000)
-    
-        
-    

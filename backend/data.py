@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-def now_iso():
+def current_date():
     return datetime.now(timezone.utc).isoformat()
 
 SEED_DATA = [

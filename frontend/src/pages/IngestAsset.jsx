@@ -7,12 +7,12 @@ import { api } from "../api";
 
 const FIELDS = [
   { name: "title", label: "Title", type: "text", placeholder: "e.g., Luck - Feature Film" },
-  { name: "format", label: "Format", type: "text", placeholder: "e.g., MOV, MXF, MP4" },
-  { name: "codec", label: "Codec", type: "text", placeholder: "e.g., ProRes 422, H.264" },
-  { name: "resolution", label: "Resolution", type: "text", placeholder: "e.g., 4K, 1080p" },
-  { name: "file_size_gb", label: "File Size (GB)", type: "number", placeholder: "e.g., 48.2" },
-  { name: "territory", label: "Territory", type: "text", placeholder: "e.g., US, CA, GLOBAL" },
-  { name: "language", label: "Language", type: "text", placeholder: "e.g., en, fr" },
+  { name: "format", label: "Format", type: "select", options: ["MOV", "MXF", "MP4", "ProRes", "AVI", "MKV"] },
+  { name: "codec", label: "Codec", type: "select", options: ["ProRes 422", "ProRes 4444", "H.264", "H.265"] },
+  { name: "resolution", label: "Resolution", type: "select", options: ["4K", "1080p", "1080i", "720p", "HDR", "2K", "8K"] },
+  { name: "file_size_gb", label: "File Size (GB)", type: "number", placeholder: "e.g., 48.2", min: 0.1 },
+  { name: "territory", label: "Territory", type: "select", options: ["US", "UK", "GLOBAL", "EU", "LATAM", "APAC", "CA", "AU", "JP"] },
+  { name: "language", label: "Language", type: "select", options: ["en", "es", "fr", "de", "ja", "mx"] },
 ];
 
 export default function IngestAsset() {
@@ -25,6 +25,7 @@ export default function IngestAsset() {
 
   const [fieldErrors, setFieldErrors] = useState({}); 
   const [apiError, setApiError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -54,6 +55,7 @@ export default function IngestAsset() {
     }
 
     setApiError(null);
+    setSubmitting(true);
     try {
       const created = await api.ingestAsset({
         ...form,
@@ -65,6 +67,8 @@ export default function IngestAsset() {
       });
     } catch (err) {
       setApiError(err.error || "An unexpected error occurred.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -88,7 +92,8 @@ export default function IngestAsset() {
         borderRadius: 12, 
         padding: 28, 
         boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>
-        {FIELDS.map(({ name, label, type, placeholder }) => (
+  
+        {FIELDS.map(({ name, label, type, placeholder, options, min }) => (
           <div key={name} style={{ marginBottom: 18 }}>
             <label style={{ 
                 display: "block", 
@@ -98,20 +103,53 @@ export default function IngestAsset() {
                 fontSize: "0.88rem" }}>
               {label} <span style={{ color: "red" }}>*</span>
             </label>
-            <input
-              name={name}
-              type={type}
-              placeholder={placeholder}
-              value={form[name]}
-              onChange={handleChange}
-              style={{
-                width: "100%", padding: "9px 14px", borderRadius: 8,
-                border: `1px solid ${fieldErrors[name] ? "#ef4444" : "#cbd5e1"}`,
-                fontSize: "0.9rem", boxSizing: "border-box", outline: "none",
-              }}
-            />
+            
+            {type === "select" ? (
+              <select
+                name={name}
+                value={form[name]}
+                onChange={handleChange}
+                style={{
+                  width: "100%", 
+                  padding: "9px 14px", 
+                  borderRadius: 8,
+                  border: `1px solid ${fieldErrors[name] ? "#ef4444" : "#cbd5e1"}`,
+                  fontSize: "0.9rem", 
+                  boxSizing: "border-box", 
+                  outline: "none",
+                  cursor: "pointer",
+                }}
+              >
+                <option value="">Select {label}…</option>
+                {options.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                name={name}
+                type={type}
+                placeholder={placeholder}
+                value={form[name]}
+                min={min}
+                onChange={handleChange}
+                style={{
+                  width: "100%", 
+                  padding: "9px 14px", 
+                  borderRadius: 8,
+                  border: `1px solid ${fieldErrors[name] ? "#ef4444" : "#cbd5e1"}`,
+                  fontSize: "0.9rem", 
+                  boxSizing: "border-box", 
+                  outline: "none",
+                }}
+              />
+            )}
+
             {fieldErrors[name] && (
-              <p style={{ color: "#ef4444", fontSize: "0.8rem", marginTop: 4 }}>
+              <p style={{ 
+                color: "#ef4444", 
+                fontSize: "0.8rem", 
+                marginTop: 4 }}>
                 {fieldErrors[name]}
               </p>
             )}
@@ -119,8 +157,14 @@ export default function IngestAsset() {
         ))}
 
         <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
-          <button onClick={handleSubmit} style={btnPrimary}>
-            Ingest Asset
+          <button 
+            onClick={handleSubmit} 
+            disabled={submitting}
+            style={{
+              ...btnPrimary,
+              opacity: submitting ? 0.6 : 1,
+              cursor: submitting ? "not-allowed" : "pointer"}}>
+              {submitting ? "Ingesting..." : "Ingest Asset"}
           </button>
           <Link to="/assets" style={btnSecondary}>
             Cancel

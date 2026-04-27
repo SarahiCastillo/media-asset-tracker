@@ -15,6 +15,13 @@ const VALID_STATUSES = [
     "failed",
 ];
 
+function formatFileSize(gb) {
+  if (gb >= 1000) return `${(gb / 1000).toFixed(1)} TB`;
+  if (gb >= 1)    return `${gb.toFixed(1)} GB`;
+  
+  return `${(gb * 1024).toFixed(0)} MB`; 
+}
+
 export default function AssetDetail() {
   const { id } = useParams();
   const [asset, setAsset] = useState(null);
@@ -22,11 +29,13 @@ export default function AssetDetail() {
   const [error, setError] = useState(null);
   const [updateError, setUpdateError] = useState(null);
   const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     api.getAsset(id)
       .then((data) => { setAsset(data); setSelectedStatus(data.status); })
-      .catch(() => setError("Asset not found."));
+      .catch(() => setError("Asset not found."))
+      .finally(() => setLoading(false));
   }, [id]);
 
   const handleStatusUpdate = () => {
@@ -71,7 +80,7 @@ export default function AssetDetail() {
                 ["Format", asset.format],
                 ["Codec", asset.codec],
                 ["Resolution", asset.resolution],
-                ["File Size", `${asset.file_size_gb} GB`],
+                ["File Size", formatFileSize(asset.file_size_gb)],
                 ["Territory", asset.territory],
                 ["Language", asset.language],
                 ["Created", new Date(asset.created_at).toLocaleString()],

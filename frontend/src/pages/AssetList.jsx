@@ -26,6 +26,7 @@ export default function AssetList(){
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const params = {};
@@ -34,7 +35,8 @@ export default function AssetList(){
 
         api.getAssets(params)
             .then(({ assets, total }) => {setAssets(assets); setTotal(total); })
-            .catch(() => setError("Failed to load assets."));
+            .catch(() => setError("Failed to load assets."))
+            .finally(() => setLoading(false));
     }, [search, statusFilter]);
 
     return (
@@ -48,7 +50,7 @@ export default function AssetList(){
                     marginBottom: 20,
                     color: "#166534",
                 }}>
-                    {confirmation}
+                    ✅ {confirmation}
                 </div>
             )}
 

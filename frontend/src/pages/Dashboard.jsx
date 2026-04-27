@@ -27,15 +27,38 @@ const CARD_COLORS = {
 export default function Dashboard() {
     const [stats, setStats] = useState(null);
     const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         api.getStats()
             .then(setStats)
-            .catch(() => setError("Could not load stats. Verify if backend is running."));
+            .catch(() => setError("Could not load stats. Verify if backend is running."))
+            .finally(() => setLoading(false));
     }, []);
-    console.log("STATS ---> ", stats);
+
     if (error) return <p style={{ color: "red"}}>{error}</p>;
     if(!stats) return <p>Loading stats...</p>;
+    
+    if (loading) return (
+        <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            gap: 10, 
+            color: "#64748b", 
+            marginTop: 40 
+        }}>
+            <div style={{
+                width: 20, 
+                height: 20, 
+                border: "3px solid #e2e8f0",
+                borderTop: "3px solid #0ea5e9", 
+                borderRadius: "50%",
+                animation: "spin 0.8s linear infinite",
+            }} />
+            Loading…
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+    );
 
     return (
         <div>

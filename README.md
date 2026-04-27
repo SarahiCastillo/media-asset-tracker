@@ -72,4 +72,4 @@ media-asset-tracker/
 ```
 
 ### Dashboard Preview
-![Dashboard Preview](.frontend/assets/dashboard.png)
+![Dashboard Preview](.frontend/src/assets/dashboard.png)
